@@ -14,7 +14,6 @@ import scala.concurrent.duration.FiniteDuration
   */
 class AuctionActorBasic(var currentBid: BigDecimal, val seller: ActorRef, val auctionId: String) extends IAuction {
 
-
   val startTime = FiniteDuration(3000, TimeUnit.MILLISECONDS)
   val deleteTime = FiniteDuration(3000, TimeUnit.MILLISECONDS)
 

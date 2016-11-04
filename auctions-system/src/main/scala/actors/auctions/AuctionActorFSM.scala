@@ -44,9 +44,11 @@ class AuctionActorFSM(var startingPrice: BigDecimal, val seller: ActorRef, val a
 
   when(Activated, stateTimeout = keepAlive) {
     case Event(Bid(newBid), AuctionData(currentBid)) => newBid > currentBid match {
-      case true => this.currentLeader = sender
+      case true =>
+        this.currentLeader ! Notify(currentBid)
+        this.currentLeader = sender
         stay using AuctionData(newBid)
-      case false => sender ! BidFailed("To low bid, current bid: " + currentBid + ", your: " + newBid, currentBid)
+      case false => sender ! BidFailed("To low bid, current bid: " + currentBid + ", your: " + newBid + " auction name: " + auctionId, currentBid)
         stay using AuctionData(currentBid)
     }
     case Event(StateTimeout, AuctionData(currentBid)) =>

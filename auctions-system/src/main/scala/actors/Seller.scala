@@ -14,28 +14,26 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * Created by wiktor on 28/10/16.
   */
-class Seller(val auctions: ArrayBuffer[ActorRef], val sellerId: String, val auctionFactory: IAuctionFactory) extends Actor {
+class Seller(val sellerId: String, val auctionFactory: IAuctionFactory, val names: Array[String]) extends Actor {
 
 
-  var amount: Int = 0
-
+  val searchActor = context.actorSelection("../" + CommonNames.auctionSearchActorName)
   override def receive: Receive = {
     case Start => context.system.scheduler.scheduleOnce(FiniteDuration(1000 + Random.nextInt(2000), TimeUnit.MILLISECONDS)) {
-      val r = Random
       val auctionId = AuctionsIdGenerator.getNext()
+      val auctionName: String = names(Random.nextInt(names.length)) + " " + auctionId
       val actor = context.system.actorOf(Props(auctionFactory.produce(randBigDecimal(20, 100),
         self,
-        sellerId + auctionId)), sellerId + auctionId)
+        auctionName)))
+      searchActor ! AddAuction(auctionName, actor)
       actor ! Start
-      AuctionsHolder.add(actor)
-//      auctions += actor
       self ! Start
     }
     case AuctionSold(_, price, auctionId) =>
-      AuctionsHolder.remove(sender)
-      println("Seller " + sellerId + " sold item" + auctionId + " for " + price)
+      searchActor ! RemoveAuction(auctionId)
+      println("Seller " + sellerId + " sold item: " + auctionId + " for " + price)
     case AuctionNotSold(auctionId) =>
-      AuctionsHolder.remove(sender)
+      searchActor ! RemoveAuction(auctionId)
       println("Seller " + sellerId + " Did not sell " + auctionId)
   }
 
