@@ -20,7 +20,7 @@ import scala.concurrent.Future
   */
 
 
-class Buyer(val buyerId: String, var bidsAmount: Int, val keyWords: Vector[String]) extends Actor {
+class Buyer(val buyerId: String, val keyWords: Vector[String], val ifSubscribeToNotify: () => Boolean, val schedulingInterval: () => Long) extends Actor {
   val timeoutDuration = FiniteDuration(5, TimeUnit.SECONDS)
   implicit val timeout = Timeout(timeoutDuration)
   var maxBid: BigDecimal = 1000
@@ -34,19 +34,20 @@ class Buyer(val buyerId: String, var bidsAmount: Int, val keyWords: Vector[Strin
       if(restoreTimer != null) {
         restoreTimer.cancel()
       }
-      context.system.scheduler.scheduleOnce(FiniteDuration(500 + Random.nextInt(5000), TimeUnit.MILLISECONDS)) {
+      context.system.scheduler.scheduleOnce(FiniteDuration(schedulingInterval(), TimeUnit.MILLISECONDS)) {
         val searchResponse = context.actorSelection("../" + CommonNames.auctionSearchActorName) ?
           GetAuctions(keyWords(Random.nextInt(keyWords.size)))
         searchResponse.onComplete {
           case Success(ResponseWithAuctions(auctions)) =>
             try {
               val currentBid = BigDecimal(50 + Random.nextInt(200))
-              auctions(Random.nextInt(auctions.size)) ! Bid(currentBid)
-              if (Random.nextInt(4) == 0) {
+              if (ifSubscribeToNotify()) {
+                auctions(Random.nextInt(auctions.size)) ! Bid(currentBid, notifyBuyer = true)
                 setRestoreTimeout()
                 maxBid = currentBid + 300
                 context become focus
               } else {
+                auctions(Random.nextInt(auctions.size)) ! Bid(currentBid, notifyBuyer = false)
                 self ! Start
               }
             } catch {
@@ -80,7 +81,7 @@ class Buyer(val buyerId: String, var bidsAmount: Int, val keyWords: Vector[Strin
   def topBid(currentBid: BigDecimal): Unit = {
     setRestoreTimeout()
     if (currentBid < maxBid) {
-      sender ! Bid(currentBid + 10)
+      sender ! Bid(currentBid + 10, notifyBuyer = true)
     } else {
       context become regular
       self ! Start

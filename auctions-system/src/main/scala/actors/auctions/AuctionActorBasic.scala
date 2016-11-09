@@ -35,7 +35,7 @@ class AuctionActorBasic(var currentBid: BigDecimal, val seller: ActorRef, val au
         context.stop(self)
       }
 
-    case Bid(amount) => if (amount > currentBid) {
+    case Bid(amount, _) => if (amount > currentBid) {
       this.currentLeader = sender
       currentBid = amount
       context become activated
@@ -52,7 +52,7 @@ class AuctionActorBasic(var currentBid: BigDecimal, val seller: ActorRef, val au
   }
 
   def activated: Receive = LoggingReceive {
-    case Bid(amount) => if (amount > currentBid) {
+    case Bid(amount, _) => if (amount > currentBid) {
       currentLeader = sender
       currentBid = amount
       context become activated

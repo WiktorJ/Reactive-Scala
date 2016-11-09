@@ -17,6 +17,7 @@ class AuctionActorFSM(var startingPrice: BigDecimal, val seller: ActorRef, val a
   val keepAlive = FiniteDuration(1000, TimeUnit.MILLISECONDS)
   val deleteTime = FiniteDuration(3000, TimeUnit.MILLISECONDS)
   var currentLeader: ActorRef = null
+  var notifyLeader: Boolean = false
 
   startWith(Created, Uninitialized)
 
@@ -25,10 +26,13 @@ class AuctionActorFSM(var startingPrice: BigDecimal, val seller: ActorRef, val a
       stay using AuctionData(startingPrice)
     case Event(Stop | StateTimeout, _) =>
       goto(Ignored) using Uninitialized
-    case Event(Bid(newBid), AuctionData(currentBid)) => newBid > currentBid match {
-      case true => this.currentLeader = sender
+    case Event(Bid(newBid, ifNotify), AuctionData(currentBid)) => newBid > currentBid match {
+      case true =>
+        this.notifyLeader = ifNotify
+        this.currentLeader = sender
         goto(Activated) using AuctionData(newBid)
-      case false => sender ! BidFailed("To low bid, current bid: " + currentBid + ", your: " + newBid, currentBid)
+      case false =>
+        sender ! BidFailed("To low bid, current bid: " + currentBid + ", your: " + newBid, currentBid)
         stay using AuctionData(currentBid)
     }
   }
@@ -43,10 +47,14 @@ class AuctionActorFSM(var startingPrice: BigDecimal, val seller: ActorRef, val a
   }
 
   when(Activated, stateTimeout = keepAlive) {
-    case Event(Bid(newBid), AuctionData(currentBid)) => newBid > currentBid match {
+    case Event(Bid(newBid, ifNotify), AuctionData(currentBid)) => newBid > currentBid match {
       case true =>
-        this.currentLeader ! Notify(currentBid)
+        if (this.notifyLeader) {
+          this.currentLeader ! Notify(newBid)
+        }
+        this.notifyLeader = ifNotify
         this.currentLeader = sender
+        println("New auction leader with bid: " + newBid)
         stay using AuctionData(newBid)
       case false => sender ! BidFailed("To low bid, current bid: " + currentBid + ", your: " + newBid + " auction name: " + auctionId, currentBid)
         stay using AuctionData(currentBid)

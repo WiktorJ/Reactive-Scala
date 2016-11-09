@@ -1,11 +1,11 @@
 package common
 
 import actors.auctions.IAuction
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, ActorRefFactory}
 
 /**
   * Created by wiktor on 28/10/16.
   */
 trait IAuctionFactory {
-  def produce(currentBid: BigDecimal, seller: ActorRef, auctionId: String): IAuction
+  def produce(actorRefFactory: ActorRefFactory, currentBid: BigDecimal, seller: ActorRef, auctionId: String): ActorRef
 }

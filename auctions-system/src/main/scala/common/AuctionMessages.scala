@@ -11,7 +11,7 @@ case class InitializeAuction(currentBid: BigDecimal,
                       seller: ActorRef,
                       auctionId: String) extends AuctionFlow
 
-case class Bid(amount: BigDecimal) extends AuctionFlow {
+case class Bid(amount: BigDecimal, notifyBuyer: Boolean) extends AuctionFlow {
   require(amount > 0)
 }
 

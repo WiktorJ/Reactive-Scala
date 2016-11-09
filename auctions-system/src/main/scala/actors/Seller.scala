@@ -14,17 +14,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * Created by wiktor on 28/10/16.
   */
-class Seller(val sellerId: String, val auctionFactory: IAuctionFactory, val names: Array[String]) extends Actor {
+class Seller(val sellerId: String, val auctionFactory: IAuctionFactory, val names: Array[String], val schedulingInterval: () => Long) extends Actor {
 
 
   val searchActor = context.actorSelection("../" + CommonNames.auctionSearchActorName)
   override def receive: Receive = {
-    case Start => context.system.scheduler.scheduleOnce(FiniteDuration(1000 + Random.nextInt(2000), TimeUnit.MILLISECONDS)) {
+    case Start => context.system.scheduler.scheduleOnce(FiniteDuration(schedulingInterval(), TimeUnit.MILLISECONDS)) {
       val auctionId = AuctionsIdGenerator.getNext()
       val auctionName: String = names(Random.nextInt(names.length)) + " " + auctionId
-      val actor = context.system.actorOf(Props(auctionFactory.produce(randBigDecimal(20, 100),
-        self,
-        auctionName)))
+      val actor = auctionFactory.produce(context.system, randBigDecimal(20, 100), self, auctionName)
       searchActor ! AddAuction(auctionName, actor)
       actor ! Start
       self ! Start

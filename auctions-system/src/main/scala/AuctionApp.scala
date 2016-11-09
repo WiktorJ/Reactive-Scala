@@ -35,12 +35,12 @@ object AuctionApp extends App {
   val searchActor = system.actorOf(Props[AuctionSearch], CommonNames.auctionSearchActorName)
 
   for (i <- 0 to sellerAmount) {
-    val seller: ActorRef = system.actorOf(Props(new Seller(i.toString, auctionFactory, auctionNames)))
+    val seller: ActorRef = system.actorOf(Props(new Seller(i.toString, auctionFactory, auctionNames, () => 1000 + Random.nextInt(2000))))
     seller ! Start
   }
 
   for (i <- 0 to buyerAmount) {
-    val buyer = system.actorOf(Props(new Buyer(i.toString, 10 + Random.nextInt(10), keyWords.toVector)))
+    val buyer = system.actorOf(Props(new Buyer(i.toString, keyWords.toVector, () => Random.nextInt(4) == 0, () => 500 + Random.nextInt(5000))))
     buyer ! Start
   }
 
