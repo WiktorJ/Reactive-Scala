@@ -20,11 +20,16 @@ import scala.concurrent.Future
   */
 
 
-class Buyer(val buyerId: String, val keyWords: Vector[String], val ifSubscribeToNotify: () => Boolean, val schedulingInterval: () => Long) extends Actor {
-  val timeoutDuration = FiniteDuration(5, TimeUnit.SECONDS)
+class Buyer(val buyerId: String,
+            val keyWords: Vector[String],
+            val ifSubscribeToNotify: () => Boolean,
+            val schedulingInterval: () => Long,
+            val auctionSearchName: String) extends Actor {
+  val timeoutDuration = FiniteDuration(15, TimeUnit.SECONDS)
   implicit val timeout = Timeout(timeoutDuration)
   var maxBid: BigDecimal = 1000
   var restoreTimer: Cancellable = null
+  var auction: AuctionActorWrapper = new AuctionActorWrapper("not a name", self)
 
 
   override def receive: Receive = regular
@@ -35,28 +40,29 @@ class Buyer(val buyerId: String, val keyWords: Vector[String], val ifSubscribeTo
         restoreTimer.cancel()
       }
       context.system.scheduler.scheduleOnce(FiniteDuration(schedulingInterval(), TimeUnit.MILLISECONDS)) {
-        val searchResponse = context.actorSelection("../" + CommonNames.auctionSearchActorName) ?
+        val searchResponse = context.actorSelection("../" + auctionSearchName) ?
           GetAuctions(keyWords(Random.nextInt(keyWords.size)))
         searchResponse.onComplete {
           case Success(ResponseWithAuctions(auctions)) =>
             try {
               val currentBid = BigDecimal(50 + Random.nextInt(200))
               if (ifSubscribeToNotify()) {
-                auctions(Random.nextInt(auctions.size)) ! Bid(currentBid, notifyBuyer = true)
                 setRestoreTimeout()
                 maxBid = currentBid + 300
+                auction = auctions(Random.nextInt(auctions.size))
+                println("Buyer " + buyerId + " becoming focused on auction " + auction.name)
                 context become focus
+                auction.actor ! Bid(currentBid, notifyBuyer = true)
               } else {
-                auctions(Random.nextInt(auctions.size)) ! Bid(currentBid, notifyBuyer = false)
+                auctions(Random.nextInt(auctions.size)).actor ! Bid(currentBid, notifyBuyer = false)
                 self ! Start
               }
             } catch {
-              case _: IllegalArgumentException => println("No auctions to bid")
+              case _: IllegalArgumentException => //println("No auctions to bid")
                 self ! Start
             }
           case _ => self ! Start
         }
-
       }
     case Stop =>
       println("Buyer " + buyerId + " Finished buying")
@@ -68,14 +74,19 @@ class Buyer(val buyerId: String, val keyWords: Vector[String], val ifSubscribeTo
 
   def focus: Receive = LoggingReceive {
     case Notify(currentBid) =>
+      println("Notify for buyer " + buyerId + " for auction " + auction.name)
       topBid(currentBid)
     case BidFailed(reason, currentBid) =>
-      println("Bid failed for buyer " + buyerId + " reson: " + reason)
+      println("Bid failed for buyer " + buyerId + " reson: " + reason + " for auction " + auction.name)
       topBid(currentBid)
     case AuctionSold(_, price, auctionId) =>
-      println("Buyer " + buyerId + " bought item: " + auctionId + " for " + price)
+      println("Buyer " + buyerId + " bought item: " + auctionId + " for " + price + " for auction " + auction.name)
       context become regular
       self ! Start
+    case AuctionNotAvailableForBidding =>
+      context become regular
+      self ! Start
+    case x => println("!!!! " + x + " for buyer " + buyerId + " for auction " + auction.name)
   }
 
   def topBid(currentBid: BigDecimal): Unit = {

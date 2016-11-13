@@ -14,24 +14,31 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * Created by wiktor on 28/10/16.
   */
-class Seller(val sellerId: String, val auctionFactory: IAuctionFactory, val names: Array[String], val schedulingInterval: () => Long) extends Actor {
+class Seller(val sellerId: String,
+             val auctionFactory: IAuctionFactory,
+             val names: Array[String],
+             val schedulingInterval: () => Long,
+             val auctionSearchName: String) extends Actor {
 
 
-  val searchActor = context.actorSelection("../" + CommonNames.auctionSearchActorName)
+  val searchActor = context.actorSelection("../" + auctionSearchName)
+
   override def receive: Receive = {
     case Start => context.system.scheduler.scheduleOnce(FiniteDuration(schedulingInterval(), TimeUnit.MILLISECONDS)) {
-      val auctionId = AuctionsIdGenerator.getNext()
+      val auctionId = AuctionsIdGenerator.getNext
       val auctionName: String = names(Random.nextInt(names.length)) + " " + auctionId
-      val actor = auctionFactory.produce(context.system, randBigDecimal(20, 100), self, auctionName)
+      val actor = auctionFactory.produce(context.system, randBigDecimal(20, 100), self, auctionName, auctionId.toString, auctionSearchName)
       searchActor ! AddAuction(auctionName, actor)
+      println("##########  " + auctionId + " ################")
       actor ! Start
+      if (auctionId == 30) {
+        context.system.terminate()
+      }
       self ! Start
     }
     case AuctionSold(_, price, auctionId) =>
-      searchActor ! RemoveAuction(auctionId)
       println("Seller " + sellerId + " sold item: " + auctionId + " for " + price)
     case AuctionNotSold(auctionId) =>
-      searchActor ! RemoveAuction(auctionId)
       println("Seller " + sellerId + " Did not sell " + auctionId)
   }
 
@@ -44,8 +51,12 @@ class Seller(val sellerId: String, val auctionFactory: IAuctionFactory, val name
 object AuctionsIdGenerator {
   var seq = 0
 
-  def getNext(): Int = {
+  def getNext: Int = {
     seq += 1
     seq
+  }
+
+  def reset(): Unit = {
+    seq = 0
   }
 }

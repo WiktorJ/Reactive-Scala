@@ -101,9 +101,3 @@ case object Ignored extends AuctionState
 
 case object Sold extends AuctionState
 
-
-sealed trait DataState
-
-case object Uninitialized extends DataState
-
-case class AuctionData(currentBid: BigDecimal) extends DataState

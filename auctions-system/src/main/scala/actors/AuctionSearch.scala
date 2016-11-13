@@ -10,21 +10,30 @@ import scala.collection.mutable.ArrayBuffer
 /**
   * Created by wiktor on 03/11/16.
   */
-class AuctionSearch extends Actor{
+class AuctionSearch extends Actor {
   var auctions: ArrayBuffer[AuctionActorWrapper] = ArrayBuffer()
 
   override def receive: Receive = {
     case AddAuction(name, auction) =>
       auctions.synchronized {
-       auctions += new AuctionActorWrapper(name, auction)
+          auctions += new AuctionActorWrapper(name, auction)
       }
     case GetAuctions(key) =>
-      sender ! ResponseWithAuctions(auctions.filter(a => a.name.contains(key)).map(e => e.actor).toList)
+      sender ! ResponseWithAuctions(auctions.filter(a => a.name.contains(key)).toList)
     case RemoveAuction(name) =>
       auctions.synchronized {
         auctions = auctions.filter(a => !a.name.eq(name))
       }
   }
+
+  sys.addShutdownHook {
+        import java.io._
+        val pw = new BufferedWriter(new FileWriter("/home/wiktor/Studies/Scala/solutions-repository/auctions-system/src/main/resources/system_shutdown_time.txt" , true))
+        pw.write("E: " + System.currentTimeMillis.toString)
+        pw.close()
+  }
+
+
 }
 
 class AuctionActorWrapper(val name: String, val actor: ActorRef) {}
