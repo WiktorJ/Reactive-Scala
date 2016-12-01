@@ -1,11 +1,14 @@
 import akka.actor.{ActorRef, ActorSystem, Props}
-import actors.{AuctionSearch, AuctionsIdGenerator, Buyer, Seller}
+import actors._
+import com.typesafe.config.ConfigFactory
 import common._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.Random
+
+
 
 /**
   * Created by wiktor on 28/10/16.
@@ -25,12 +28,17 @@ object AuctionApp extends App {
 
   val sellerAmount = 3
   val buyerAmount = 15
-  var system = ActorSystem(CommonNames.systemName)
+  val config = ConfigFactory.load()
+  var system = ActorSystem(CommonNames.systemName, config.getConfig(CommonNames.localServiceConfig).withFallback(config))
+  var publishSystem = ActorSystem(CommonNames.systemName, config.getConfig(CommonNames.publishServiceConfig).withFallback(config))
   var auctions: ArrayBuffer[ActorRef] = new ArrayBuffer[ActorRef]()
   var createAuction = true
 
-  val auctionFactory = new FSMPersistAuctionFactory()
-  //  val auctionFactory = new FSMAuctionFactory()
+  val notifier = system.actorOf(Props[Notifier])
+
+  val auctionFactory = new PublishFSMPersistAuctionFactory(notifier)
+//  val auctionFactory = new FSMPersistAuctionFactory()
+//    val auctionFactory = new FSMAuctionFactory()
   //    val auctionFactory = new BasicA=>uctionFactory()
 
   val auctionNames: Array[String] = Array("Audi A6 diesel manual",
@@ -45,22 +53,19 @@ object AuctionApp extends App {
   val keyWords: Set[String] = auctionNames.foldLeft(Set[String]())((set, name) =>
     set ++ name.split(" "))
 
+  publishSystem.actorOf(Props[AuctionPublisher], CommonNames.publishServiceName)
+
+//  var searchActor = system.actorOf(Props(new MasterSearch(5)), CommonNames.auctionSearchActorName)
   var searchActor = system.actorOf(Props[AuctionSearch], CommonNames.auctionSearchActorName)
   //  val searchActor = system.actorOf(Props[PersistAuctionSearch], CommonNames.auctionSearchActorName)
 
-  import java.io._
-  var pw = new BufferedWriter(new FileWriter("/home/wiktor/Studies/Scala/solutions-repository/auctions-system/src/main/resources/system_shutdown_time.txt" , true))
-  pw.write("S: " + System.currentTimeMillis.toString)
-  pw.write("\n")
-  pw.close()
-
   for (i <- 0 until sellerAmount) {
-    val seller: ActorRef = system.actorOf(Props(new Seller(i.toString, auctionFactory, auctionNames, () => 2000, CommonNames.auctionSearchActorName)))
+    val seller: ActorRef = system.actorOf(Props(new Seller(i.toString, auctionFactory, auctionNames, () => 2000 + Random.nextInt(4000), CommonNames.auctionSearchActorName)))
     seller ! Start
   }
 
   for (i <- 0 until buyerAmount) {
-    val buyer = system.actorOf(Props(new Buyer(i.toString, keyWords.toVector, () => Random.nextInt(4) == 0, () => 1000, CommonNames.auctionSearchActorName)))
+    val buyer = system.actorOf(Props(new Buyer(i.toString, keyWords.toVector, () => Random.nextInt(4) == 0, () => 1000 + Random.nextInt(2000), CommonNames.auctionSearchActorName)))
     buyer ! Start
   }
 

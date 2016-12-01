@@ -92,6 +92,7 @@ class AuctionTest extends TestKit(ActorSystem(CommonNames.systemName))
       val seller = TestActorRef(Props(new Seller(id, new IAuctionFactory {
         override def produce(actorRefFactory: ActorRefFactory, currentBid: BigDecimal, seller: ActorRef, auctionName: String, auctionId: String, auctionSearchName: String): ActorRef = auctionProbe.ref
       }, Array("random_name"), () => 10, "0")))
+      seller.underlyingActor
       seller ! Start
       auctionProbe.expectMsg(500 millis, Start)
     }

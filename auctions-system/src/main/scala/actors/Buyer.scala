@@ -40,6 +40,7 @@ class Buyer(val buyerId: String,
         restoreTimer.cancel()
       }
       context.system.scheduler.scheduleOnce(FiniteDuration(schedulingInterval(), TimeUnit.MILLISECONDS)) {
+//      for(i <- 1 to 100000) {
         val searchResponse = context.actorSelection("../" + auctionSearchName) ?
           GetAuctions(keyWords(Random.nextInt(keyWords.size)))
         searchResponse.onComplete {
@@ -64,6 +65,7 @@ class Buyer(val buyerId: String,
           case _ => self ! Start
         }
       }
+//      sender ! Stop
     case Stop =>
       println("Buyer " + buyerId + " Finished buying")
     case BidFailed(reason, currentBit) =>
@@ -74,13 +76,13 @@ class Buyer(val buyerId: String,
 
   def focus: Receive = LoggingReceive {
     case Notify(currentBid) =>
-      println("Notify for buyer " + buyerId + " for auction " + auction.name)
+//      println("Notify for buyer " + buyerId + " for auction " + auction.name)
       topBid(currentBid)
     case BidFailed(reason, currentBid) =>
-      println("Bid failed for buyer " + buyerId + " reson: " + reason + " for auction " + auction.name)
+//      println("Bid failed for buyer " + buyerId + " reson: " + reason + " for auction " + auction.name)
       topBid(currentBid)
     case AuctionSold(_, price, auctionId) =>
-      println("Buyer " + buyerId + " bought item: " + auctionId + " for " + price + " for auction " + auction.name)
+//      println("Buyer " + buyerId + " bought item: " + auctionId + " for " + price + " for auction " + auction.name)
       context become regular
       self ! Start
     case AuctionNotAvailableForBidding =>

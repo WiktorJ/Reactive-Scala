@@ -25,17 +25,15 @@ class Seller(val sellerId: String,
 
   override def receive: Receive = {
     case Start => context.system.scheduler.scheduleOnce(FiniteDuration(schedulingInterval(), TimeUnit.MILLISECONDS)) {
+//    case Start => for(i <- 1 to 50000) {
       val auctionId = AuctionsIdGenerator.getNext
       val auctionName: String = names(Random.nextInt(names.length)) + " " + auctionId
       val actor = auctionFactory.produce(context.system, randBigDecimal(20, 100), self, auctionName, auctionId.toString, auctionSearchName)
       searchActor ! AddAuction(auctionName, actor)
-      println("##########  " + auctionId + " ################")
       actor ! Start
-      if (auctionId == 30) {
-        context.system.terminate()
-      }
       self ! Start
     }
+//      sender ! Done
     case AuctionSold(_, price, auctionId) =>
       println("Seller " + sellerId + " sold item: " + auctionId + " for " + price)
     case AuctionNotSold(auctionId) =>

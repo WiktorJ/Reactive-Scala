@@ -1,0 +1,26 @@
+Round Robin:
+1 - Searching:  1202[ms]
+    Whole:      32688[ms]
+
+5 - Searching:  1868[ms]
+    Whole:      36557[ms]
+
+10 - Searching: 1769[ms]
+     Whole:     35247[ms]
+
+50 - Searching: 1889[ms]
+     Whole:     42231[ms]
+
+Scatter:
+
+1 - Searching: 4099[ms]
+    Whole: 14680[ms]
+
+5 - Searching: 8435[ms]
+    Whole: 19511[ms]
+
+10 - Searching: 2422[ms]
+     Whole: 12546[ms]
+
+50 - Searching: 2465[ms]
+     Whole: 13356[ms]

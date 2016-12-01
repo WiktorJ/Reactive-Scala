@@ -26,13 +26,6 @@ class AuctionSearch extends Actor {
       }
   }
 
-  sys.addShutdownHook {
-        import java.io._
-        val pw = new BufferedWriter(new FileWriter("/home/wiktor/Studies/Scala/solutions-repository/auctions-system/src/main/resources/system_shutdown_time.txt" , true))
-        pw.write("E: " + System.currentTimeMillis.toString)
-        pw.close()
-  }
-
 
 }
 

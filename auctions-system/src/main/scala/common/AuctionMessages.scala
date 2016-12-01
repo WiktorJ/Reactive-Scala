@@ -46,3 +46,10 @@ case class GetAuctions(key: String) extends AuctionSearchFlow
 case class ResponseWithAuctions(auctions: List[AuctionActorWrapper]) extends AuctionSearchFlow
 
 case class RemoveAuction(name: String) extends AuctionSearchFlow
+
+
+sealed trait PublishFlow
+
+case class PublisherNotify(title: String, currentBuyer: String, currentBid: BigDecimal) extends PublishFlow
+
+case object Done extends PublishFlow
